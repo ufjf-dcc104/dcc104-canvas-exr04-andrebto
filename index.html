@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>DCC104 - Exemplo 02</title>
+    <script src="ImageLoader.js" charset="utf-8"></script>
+    <script src="AudioLoader.js" charset="utf-8"></script>
+    <script src="Sprite.js" charset="utf-8"></script>
+    <script src="Level.js" charset="utf-8"></script>
+  </head>
+  <body>
+    <h1>DCC104 - Exemplo 02</h1>
+    <canvas></canvas>
+    <script>
+      var eCanvas = document.getElementsByTagName("canvas")[0];
+      eCanvas.width = 640;
+      eCanvas.height = 480;
+      var ctx = eCanvas.getContext("2d");
+
+      var img = new Image();
+      img.src = 'images/PlayBG.png';
+      img.onload = function(){
+        ctx.drawImage(img, 0, 0, eCanvas.width, eCanvas.height);
+      }
+
+      var il = new ImageLoader();
+      il.load("pc", "images/canhao.png");
+      il.load("enemy", "images/enemy_1.png");
+      il.load("shot", "images/ball.png");
+      il.load("build", "images/predio_2_m.png");
+
+      var al = new AudioLoader();
+      al.load("shot", "audios/Missle_Launch-Kibblesbob-2118796725.mp3");
+      al.load("boom", "audios/Grenade-SoundBible.com-1777900486.mp3");
+
+      var fps = 120;
+      var atual = new Date();
+      var anterior = new Date();
+      var dt = 1/fps;
+      var angle = -90;
+      var life = 100;
+      var running = true;
+
+      var azul = new Sprite();
+      azul.x = 300;
+      azul.y = 400;
+      azul.radius = 16;
+      var fuel = 100;
+      var acelerandoX = false;
+      var acelerandoY = false;
+      var level = new Level();
+      level.imageLib = il;
+      level.init();
+
+
+      desenha();
+
+
+
+
+      function desenha(){
+
+        if(running) {
+          requestAnimationFrame(desenha);
+          atual = new Date();
+          dt = (atual - anterior)/1000;
+          ctx.drawImage(img,0,0);
+          ctx.fillStyle = "black";
+          ctx.font = "14px Times New Roman";
+          ctx.fillText("Points: "+level.score, 10, 20);
+          ctx.fillText("Life: "+life, 10, 34);
+
+          azul.angle = angle;
+
+          azul.moverAng(dt);
+          level.moverAng(dt);
+
+          level.colidiuCom(azul,
+            function(inimigo, alvo){
+              inimigo.color = "red";
+            }
+          );
+
+          if(life <= 0 || level.builds.length == 0)
+            running = !running;
+
+          level.desenharImg(ctx);
+          azul.desenharImg(ctx, il.images["pc"]);
+          level.colidiuComTiros(al,"boom");
+
+          for(i = 0; i < level.sprites.length; ++i) {
+
+            var j = 0;
+            while(j < level.builds.length) {
+
+              //console.log(level.sprites[i].colidiuCircleBox(level.builds[j]));
+              if(level.sprites[i].colidiuCircleBox(level.builds[j])) {
+
+                  level.builds.splice(j,1);
+                  level.resetEnemy(i);
+              }
+              else
+                ++j;
+            }
+
+              if(level.sprites[i].x < 0 || level.sprites[i].x > eCanvas.width)
+                level.resetEnemy(i);
+
+            if(level.sprites[i].y > eCanvas.height) {
+              
+                if(life > 0)
+                  life -= 25;
+                level.resetEnemy(i);
+            }
+          }
+          anterior = atual;
+        }
+        else {
+              ctx.drawImage(img,0,0);
+              ctx.fillStyle = "black";
+              ctx.font = "20px Times New Roman";
+              ctx.fillText("You Lose: "+level.score+" points", 250, 200);
+        }
+      }
+
+      addEventListener("keydown", function(e){
+        if(fuel<=0) return;
+        switch (e.keyCode) {
+          case 32:
+            level.fire(azul, al, "shot", 0.5);
+            break;
+
+          case 37:
+            azul.vang = -100;
+            break;
+          case 38:
+            azul.am = 50;
+            break;
+          case 39:
+            azul.vang = +100;
+            break;
+          case 40:
+            azul.am = -50;
+            break;
+          default:
+
+        }
+      });
+      addEventListener("keyup", function(e){
+        switch (e.keyCode) {
+          case 37:
+            azul.vang = 0;
+            break;
+          case 38:
+            azul.am = 0;
+            break;
+          case 39:
+            azul.vang = 0;
+            break;
+          case 40:
+            azul.am = 0;
+            break;
+          default:
+
+        }
+      });
+
+      function getMousePos(canvas, evt) {
+        var rect = canvas.getBoundingClientRect();
+        return {
+          x: evt.clientX - rect.left,
+          y: evt.clientY - rect.top
+        };
+      }
+
+      addEventListener('mousemove', function(evt) {
+        var mousePos = getMousePos(eCanvas, evt);
+        if(mousePos.y <= eCanvas.height) {
+          var dX = mousePos.x - azul.x;
+          var dY = mousePos.y - azul.y;
+          var dist = Math.sqrt(dX*dX+dY*dY);
+          var dA = -180*Math.acos(dX/dist)/Math.PI;
+          angle = dA;
+        }
+      }, false);
+
+      addEventListener('mousedown', function(evt) {
+        level.fire(azul, al, "shot", 0.5);
+      }, false);
+
+    </script>
+  </body>
+
+
+
+
+</html>
